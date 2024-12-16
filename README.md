@@ -1,6 +1,7 @@
 ## Flake Backend
 
 - Run `pnpm i`
+- Run `solana-keygen new -o keypair.json ` to generate a local keypair wallet
 - Run `pnpm run listener` to start the indexer
 - Run `pnpm run server` to start the api server
 - API endpoint to fetch markets: `http://localhost:3000/api/markets`
