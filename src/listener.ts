@@ -5,9 +5,9 @@ import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
 
-const PROGRAM_ID = new PublicKey("5cYJsEQDUHGQuZ3SuSRjAN14g23iXtWboqoFJ6fJHtYM");
-const RPC_URL = "https://api.devnet.solana.com";
-//const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
+const PROGRAM_ID = new PublicKey("3TSDjEyy4Hu3MejRUb4AMBrEQ8nRUtAXPw5Rr3Jkn1NM");
+// const RPC_URL = "https://api.devnet.solana.com";
+const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
 
 const DATA_FILE = path.join(__dirname, '..' ,'data' ,'markets_data.json');
 
@@ -25,6 +25,13 @@ interface PairInfo {
   website?: string;
   requests?: { price: string; description: string }[];
   createdAt: string;
+  // added fields
+  price?: number;
+  buys?: number;
+  sells?: number;
+  liquidity?: number;
+  marketCap?: number;
+  volume?: number;
 }
 
 async function loadWallet(): Promise<Wallet> {
@@ -77,6 +84,12 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
       price: r.price.toString(),
       description: r.description
     })),
+    price: 0,
+    buys: 0,
+    sells: 0,
+    liquidity: 0,
+    marketCap: 0,
+    volume: 0,
   };
 }
 
