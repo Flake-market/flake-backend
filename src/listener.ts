@@ -15,6 +15,7 @@ interface PairInfo {
   pairId: string;
   pairKey: string;
   creator: string;
+  attentionToken: string;
   basePrice: string;
   name?: string;
   ticker?: string;
@@ -73,6 +74,7 @@ async function writePairsData(pairs: PairInfo[]): Promise<void> {
 async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey): Promise<Partial<PairInfo>> {
   const pair = await program.account.pair.fetch(pairAddress);
   return {
+    attentionToken: pair.attentionTokenMint.toBase58(),
     name: pair.name,
     ticker: pair.ticker,
     description: pair.description,
@@ -109,6 +111,7 @@ async function startIndexing() {
       pairId: pairId.toString(),
       pairKey: pairKey.toBase58(),
       creator: creator.toBase58(),
+      attentionToken: additionalDetails.attentionToken!,
       basePrice: basePrice.toString(),
       createdAt: new Date().toISOString(),
       ...additionalDetails,
@@ -121,7 +124,6 @@ async function startIndexing() {
 
     // Write updated data back to file
     await writePairsData(pairs);
-
     console.log(`Indexed new pair: ${pairId}`);
     console.log('Pair details:', newPair);
   });
