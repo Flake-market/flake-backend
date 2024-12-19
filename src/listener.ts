@@ -31,6 +31,7 @@ interface PairInfo {
   buys?: number;
   sells?: number;
   supply?: number;
+  liquidity?: number;
   marketCap?: number;
   volume?: number;
 }
@@ -90,6 +91,7 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
     buys: 0,
     sells: 0,
     supply: 0,
+    liquidity: 0,
     marketCap: 0,
     volume: 0,
   };
@@ -114,6 +116,7 @@ async function startIndexing() {
       attentionToken: additionalDetails.attentionToken!,
       createdAt: new Date().toISOString(),
       supply: additionalDetails.supply!,
+      liquidity: additionalDetails.liquidity!,
       ...additionalDetails,
     };
     // Read existing data
@@ -141,6 +144,7 @@ async function startIndexing() {
       // Ensure all numeric values are numbers, not strings
       const pair = pairs[pairIndex];
       pair.supply = Number(pair.supply || 0);
+      pair.liquidity = Number(pair.liquidity || 0);
       pair.volume = Number(pair.volume || 0);
       pair.buys = Number(pair.buys || 0);
       pair.sells = Number(pair.sells || 0);
@@ -149,10 +153,12 @@ async function startIndexing() {
       if (isBuy) {
         pair.buys++;
         pair.supply += Number(amountOut);
+        pair.liquidity += Number(amountIn);
         pair.volume += Number(amountIn);
       } else {
         pair.sells++;
         pair.supply -= Number(amountIn);
+        pair.liquidity -= Number(amountOut);
         pair.volume += Number(amountOut);
       }
       
