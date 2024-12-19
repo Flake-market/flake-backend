@@ -4,7 +4,7 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
-
+import { getPrice } from '../lib/utils';
 const PROGRAM_ID = new PublicKey("8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd");
 const RPC_URL = "https://api.devnet.solana.com";
 // const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
@@ -127,7 +127,47 @@ async function startIndexing() {
     console.log('Pair details:', newPair);
   });
 
+  program.addEventListener('swapExecuted', async (event, slot) => {
+    const { isBuy, amountIn, amountOut, user, pairKey, attentionTokenMint } = event;
+    
+    // Read existing data
+    const pairs = await readPairsData();
+    
+    // Find the pair in our data
+    const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
+    
+    if (pairIndex !== -1) {
+      // Update the pair's stats
+      if (isBuy) {
+        pairs[pairIndex]!.buys! += 1;
+        pairs[pairIndex]!.supply! += amountOut;
+        pairs[pairIndex]!.volume! += amountIn;
+        pairs[pairIndex]!.price! = getPrice(pairs[pairIndex]!.supply!);
+        pairs[pairIndex]!.marketCap! = pairs[pairIndex]!.price! * pairs[pairIndex]!.supply!;
+      } else {
+        pairs[pairIndex]!.sells! += 1;
+        pairs[pairIndex]!.supply! -= amountIn;
+        pairs[pairIndex]!.volume! += amountOut;
+        pairs[pairIndex]!.price! = getPrice(pairs[pairIndex]!.supply!);
+        pairs[pairIndex]!.marketCap! = pairs[pairIndex]!.price! * pairs[pairIndex]!.supply!;
+      }
+      
+      // Write updated data back to file
+      await writePairsData(pairs);
+      console.log(`Indexed swap for pair: ${pairKey.toBase58()}`);
+      console.log('Swap details:', {
+        isBuy,
+        amountIn: amountIn.toString(),
+        amountOut: amountOut.toString(),
+        user: user.toBase58(),
+        attentionTokenMint: attentionTokenMint.toBase58()
+      });
+    }
+  });
+
   console.log('Indexer started');
+
+
 }
 
 startIndexing().catch(console.error);
