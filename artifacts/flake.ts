@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/flake.json`.
  */
 export type Flake = {
-  "address": "3TSDjEyy4Hu3MejRUb4AMBrEQ8nRUtAXPw5Rr3Jkn1NM",
+  "address": "4JnYf1yL3TeroAg3Xtj9pVA4vJqtWckZcTDc6Ajfbm9j",
   "metadata": {
     "name": "flake",
     "version": "0.1.0",

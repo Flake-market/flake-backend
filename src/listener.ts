@@ -4,12 +4,20 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
+import os from 'os';
+import dotenv from 'dotenv';
 
-const PROGRAM_ID = new PublicKey("3TSDjEyy4Hu3MejRUb4AMBrEQ8nRUtAXPw5Rr3Jkn1NM");
-// const RPC_URL = "https://api.devnet.solana.com";
-const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
+dotenv.config();
 
-const DATA_FILE = path.join(__dirname, '..' ,'data' ,'markets_data.json');
+const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
+
+const DATA_DIR = process.env.NODE_ENV === 'production' ? os.tmpdir() : path.join(__dirname, '..', 'data');
+const DATA_FILE = path.join(DATA_DIR, 'markets_data.json');
+
+// Ensure the data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 interface PairInfo {
   pairId: string;
@@ -96,7 +104,7 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
 }
 
 
-async function startIndexing() {
+export async function startIndexing() {
     const wallet = await loadWallet();
     const program = await getProgram(wallet);
 
@@ -131,4 +139,3 @@ async function startIndexing() {
   console.log('Indexer started');
 }
 
-startIndexing().catch(console.error);
