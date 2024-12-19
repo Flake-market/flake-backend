@@ -8,8 +8,19 @@ import { getPrice, lamports } from '../lib/utils';
 const PROGRAM_ID = new PublicKey("8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd");
 const RPC_URL = "https://api.devnet.solana.com";
 // const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
+import os from 'os';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const DATA_FILE = path.join(__dirname, '..' ,'data' ,'markets_data.json');
+const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
+
+const DATA_DIR = process.env.NODE_ENV === 'production' ? os.tmpdir() : path.join(__dirname, '..', 'data');
+const DATA_FILE = path.join(DATA_DIR, 'markets_data.json');
+
+// Ensure the data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 interface PairInfo {
   pairId: string;
@@ -98,7 +109,7 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
 }
 
 
-async function startIndexing() {
+export async function startIndexing() {
     const wallet = await loadWallet();
     const program = await getProgram(wallet);
 
@@ -184,4 +195,3 @@ async function startIndexing() {
 
 }
 
-startIndexing().catch(console.error);
