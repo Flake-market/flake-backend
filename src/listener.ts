@@ -4,7 +4,7 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
-import { getPrice } from '../lib/utils';
+import { getPrice, lamports } from '../lib/utils';
 const PROGRAM_ID = new PublicKey("8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd");
 const RPC_URL = "https://api.devnet.solana.com";
 // const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
@@ -113,6 +113,7 @@ async function startIndexing() {
       creator: creator.toBase58(),
       attentionToken: additionalDetails.attentionToken!,
       createdAt: new Date().toISOString(),
+      supply: additionalDetails.supply!,
       ...additionalDetails,
     };
     // Read existing data
@@ -137,20 +138,27 @@ async function startIndexing() {
     const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
     
     if (pairIndex !== -1) {
-      // Update the pair's stats
+      // Ensure all numeric values are numbers, not strings
+      const pair = pairs[pairIndex];
+      pair.supply = Number(pair.supply || 0);
+      pair.volume = Number(pair.volume || 0);
+      pair.buys = Number(pair.buys || 0);
+      pair.sells = Number(pair.sells || 0);
+      
+      // Update stats
       if (isBuy) {
-        pairs[pairIndex]!.buys! += 1;
-        pairs[pairIndex]!.supply! += amountOut;
-        pairs[pairIndex]!.volume! += amountIn;
-        pairs[pairIndex]!.price! = getPrice(pairs[pairIndex]!.supply!);
-        pairs[pairIndex]!.marketCap! = pairs[pairIndex]!.price! * pairs[pairIndex]!.supply!;
+        pair.buys++;
+        pair.supply += Number(amountOut);
+        pair.volume += Number(amountIn);
       } else {
-        pairs[pairIndex]!.sells! += 1;
-        pairs[pairIndex]!.supply! -= amountIn;
-        pairs[pairIndex]!.volume! += amountOut;
-        pairs[pairIndex]!.price! = getPrice(pairs[pairIndex]!.supply!);
-        pairs[pairIndex]!.marketCap! = pairs[pairIndex]!.price! * pairs[pairIndex]!.supply!;
+        pair.sells++;
+        pair.supply -= Number(amountIn);
+        pair.volume += Number(amountOut);
       }
+      
+      // Calculate price and market cap
+      pair.price = getPrice(pair.supply);
+      pair.marketCap = pair.price * pair.supply / lamports;
       
       // Write updated data back to file
       await writePairsData(pairs);
