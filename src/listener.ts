@@ -5,9 +5,9 @@ import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
 
-const PROGRAM_ID = new PublicKey("3TSDjEyy4Hu3MejRUb4AMBrEQ8nRUtAXPw5Rr3Jkn1NM");
-// const RPC_URL = "https://api.devnet.solana.com";
-const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
+const PROGRAM_ID = new PublicKey("8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd");
+const RPC_URL = "https://api.devnet.solana.com";
+// const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
 
 const DATA_FILE = path.join(__dirname, '..' ,'data' ,'markets_data.json');
 
@@ -16,7 +16,7 @@ interface PairInfo {
   pairKey: string;
   creator: string;
   attentionToken: string;
-  basePrice: string;
+  // basePrice: string;
   name?: string;
   ticker?: string;
   description?: string;
@@ -30,7 +30,7 @@ interface PairInfo {
   price?: number;
   buys?: number;
   sells?: number;
-  liquidity?: number;
+  supply?: number;
   marketCap?: number;
   volume?: number;
 }
@@ -86,10 +86,10 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
       price: r.price.toString(),
       description: r.description
     })),
-    price: 0,
+    price: pair.pmin.toNumber(),
     buys: 0,
     sells: 0,
-    liquidity: 0,
+    supply: 0,
     marketCap: 0,
     volume: 0,
   };
@@ -112,7 +112,6 @@ async function startIndexing() {
       pairKey: pairKey.toBase58(),
       creator: creator.toBase58(),
       attentionToken: additionalDetails.attentionToken!,
-      basePrice: basePrice.toString(),
       createdAt: new Date().toISOString(),
       ...additionalDetails,
     };
