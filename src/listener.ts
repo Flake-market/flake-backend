@@ -11,9 +11,11 @@ dotenv.config();
 
 const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
 
+// TODO: Use a hashmap for faster querying in the future
 const DATA_DIR = process.env.NODE_ENV === 'production' ? os.tmpdir() : path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'markets_data.json');
-
+const REQUEST_DATA_FILE = path.join(DATA_DIR, 'request_data.json');
+const SWAP_DATA_FILE = path.join(DATA_DIR, 'swap_data.json');
 // Ensure the data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -44,6 +46,26 @@ interface PairInfo {
   volume?: number;
 }
 
+interface RequestInfo {
+  pairKey: string;
+  user: string;
+  requestIndex: number;
+  adText: string;
+  createdAt: string;
+}
+
+interface SwapInfo {
+  pairKey: string;
+  user: string;
+  isBuy: boolean;
+  tokenIn: string;
+  tokenOut: string;
+  amountIn: number;
+  amountOut: number;
+  createdAt: string;
+  averagePrice: number;
+}
+
 async function loadWallet(): Promise<Wallet> {
   const keyPath = path.join(__dirname, '..', 'keypair.json');
   if (!fs.existsSync(keyPath)) {
@@ -64,8 +86,6 @@ async function getProgram(wallet: Wallet): Promise<Program<Flake>> {
   return new Program<Flake>(idl as Flake, provider);
 }
 
-
-
 async function readPairsData(): Promise<PairInfo[]> {
   try {
     const data = await fs.readFileSync(DATA_FILE, 'utf-8');
@@ -78,6 +98,33 @@ async function readPairsData(): Promise<PairInfo[]> {
 
 async function writePairsData(pairs: PairInfo[]): Promise<void> {
   await fs.writeFileSync(DATA_FILE, JSON.stringify(pairs, null, 2));
+}
+
+async function readRequestsData(): Promise<RequestInfo[]> {
+  try {
+    const data = await fs.readFileSync(REQUEST_DATA_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    // If file doesn't exist or is empty, return an empty array
+    return [];
+  }
+}
+
+async function writeRequestsData(requests: RequestInfo[]): Promise<void> {
+  await fs.writeFileSync(REQUEST_DATA_FILE, JSON.stringify(requests, null, 2));
+}
+
+async function writeSwapsData(swaps: SwapInfo[]): Promise<void> {
+  await fs.writeFileSync(SWAP_DATA_FILE, JSON.stringify(swaps, null, 2));
+}
+
+async function readSwapsData(): Promise<SwapInfo[]> {
+  try {
+    const data = await fs.readFileSync(SWAP_DATA_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
 }
 
 async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey): Promise<Partial<PairInfo>> {
@@ -144,7 +191,7 @@ export async function startIndexing() {
     
     // Read existing data
     const pairs = await readPairsData();
-    
+    const swaps = await readSwapsData();
     // Find the pair in our data
     const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
     
@@ -185,10 +232,50 @@ export async function startIndexing() {
         attentionTokenMint: attentionTokenMint.toBase58()
       });
     }
+
+    const newSwap: SwapInfo = {
+      pairKey: pairKey.toBase58(),
+      user: user.toBase58(),
+      isBuy: isBuy,
+      tokenIn: isBuy ? 'SOL' : pairs[pairIndex].ticker!,
+      tokenOut: isBuy ? pairs[pairIndex].ticker! : 'SOL',
+      amountIn: Number(amountIn),
+      amountOut: Number(amountOut),
+      createdAt: new Date().toISOString(),
+      averagePrice: isBuy ? Number(amountIn) / Number(amountOut) : Number(amountOut) / Number(amountIn),
+    };
+
+    // Add new swap to the beginning of the array
+    swaps.unshift(newSwap);
+
+    // Write updated data back to file
+    await writeSwapsData(swaps);
+    console.log(`Indexed new swap for pair: ${pairKey.toBase58()}`);
+    console.log('Swap details:', newSwap);
+  });
+
+  program.addEventListener('requestSubmitted', async (event, slot) => {
+    const { pairKey, user, requestIndex, adText } = event;
+    
+    const newRequest: RequestInfo = {
+      pairKey: pairKey.toBase58(),
+      user: user.toBase58(),
+      requestIndex: requestIndex,
+      adText: adText,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Read existing requests
+    const requests = await readRequestsData();
+
+    // Add new request to the beginning of the array
+    requests.unshift(newRequest);
+
+    // Write updated data back to file
+    await writeRequestsData(requests);
+    console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
+    console.log('Request details:', newRequest);
   });
 
   console.log('Indexer started');
-
-
 }
-
