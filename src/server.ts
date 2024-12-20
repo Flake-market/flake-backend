@@ -61,7 +61,8 @@ app.get('/api/markets', async (req: Request, res: Response) => {
   }
 });
 
-export function startServer(port: number = 3000) {
+export function startServer(port:any = 3000) {
+  port = process.env.PORT || 3000;
   return new Promise<void>((resolve) => {
     app.listen(port, () => {
       console.log(`API server running on port ${port}`);

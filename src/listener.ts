@@ -5,9 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
 import { getPrice, lamports } from '../lib/utils';
-const PROGRAM_ID = new PublicKey("8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd");
-const RPC_URL = "https://api.devnet.solana.com";
-// const RPC_URL = "http://127.0.0.1:8899"; // local validator URL
 import os from 'os';
 import dotenv from 'dotenv';
 dotenv.config();
