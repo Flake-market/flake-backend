@@ -5,8 +5,8 @@
     "creator": "Gzvqi4DyREPV9FiExce4ULSRsjNC8f12xfzJrqg6km8N",
     "attentionToken": "38bwR8BnSj3spGhpaZW8brmr4MGKGkrG46PapPsm51Pr",
     "createdAt": "2024-12-20T08:29:06.132Z",
-    "supply": 10698495947756,
-    "liquidity": 1000000000,
+    "supply": 24569940020605,
+    "liquidity": 4000000000,
     "name": "New Token",
     "ticker": "NEW",
     "description": "Another token created from existing factory",
@@ -20,11 +20,11 @@
         "description": "Special promo tweet"
       }
     ],
-    "price": 146942.165493769,
-    "buys": 1,
+    "price": 285601.12044596754,
+    "buys": 4,
     "sells": 0,
-    "marketCap": 1572060162.089579,
-    "volume": 1000000000
+    "marketCap": 7017202399.175006,
+    "volume": 4000000000
   },
   {
     "pairId": "32",
