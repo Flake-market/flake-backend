@@ -11,8 +11,10 @@ dotenv.config();
 
 const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
 
+// TODO: Use a hashmap for faster querying in the future
 const DATA_DIR = process.env.NODE_ENV === 'production' ? os.tmpdir() : path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'markets_data.json');
+const REQUEST_DATA_FILE = path.join(DATA_DIR, 'request_data.json');
 
 // Ensure the data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -42,6 +44,14 @@ interface PairInfo {
   liquidity?: number;
   marketCap?: number;
   volume?: number;
+}
+
+interface RequestInfo {
+  pairKey: string;
+  user: string;
+  requestIndex: number;
+  adText: string;
+  createdAt: string;
 }
 
 async function loadWallet(): Promise<Wallet> {
@@ -78,6 +88,20 @@ async function readPairsData(): Promise<PairInfo[]> {
 
 async function writePairsData(pairs: PairInfo[]): Promise<void> {
   await fs.writeFileSync(DATA_FILE, JSON.stringify(pairs, null, 2));
+}
+
+async function readRequestsData(): Promise<RequestInfo[]> {
+  try {
+    const data = await fs.readFileSync(REQUEST_DATA_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    // If file doesn't exist or is empty, return an empty array
+    return [];
+  }
+}
+
+async function writeRequestsData(requests: RequestInfo[]): Promise<void> {
+  await fs.writeFileSync(REQUEST_DATA_FILE, JSON.stringify(requests, null, 2));
 }
 
 async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey): Promise<Partial<PairInfo>> {
@@ -187,8 +211,28 @@ export async function startIndexing() {
     }
   });
 
+  program.addEventListener('requestSubmitted', async (event, slot) => {
+    const { pairKey, user, requestIndex, adText } = event;
+    
+    const newRequest: RequestInfo = {
+      pairKey: pairKey.toBase58(),
+      user: user.toBase58(),
+      requestIndex: requestIndex,
+      adText: adText,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Read existing requests
+    const requests = await readRequestsData();
+
+    // Add new request to the beginning of the array
+    requests.unshift(newRequest);
+
+    // Write updated data back to file
+    await writeRequestsData(requests);
+    console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
+    console.log('Request details:', newRequest);
+  });
+
   console.log('Indexer started');
-
-
 }
-
