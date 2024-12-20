@@ -4,9 +4,9 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import fs from 'fs';
 import path from 'path';
 import { Flake } from '../artifacts/flake';
+import { getPrice, lamports } from '../lib/utils';
 import os from 'os';
 import dotenv from 'dotenv';
-
 dotenv.config();
 
 const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
@@ -24,7 +24,7 @@ interface PairInfo {
   pairKey: string;
   creator: string;
   attentionToken: string;
-  basePrice: string;
+  // basePrice: string;
   name?: string;
   ticker?: string;
   description?: string;
@@ -38,6 +38,7 @@ interface PairInfo {
   price?: number;
   buys?: number;
   sells?: number;
+  supply?: number;
   liquidity?: number;
   marketCap?: number;
   volume?: number;
@@ -94,9 +95,10 @@ async function fetchPairDetails(program: Program<Flake>, pairAddress: PublicKey)
       price: r.price.toString(),
       description: r.description
     })),
-    price: 0,
+    price: pair.pmin.toNumber(),
     buys: 0,
     sells: 0,
+    supply: 0,
     liquidity: 0,
     marketCap: 0,
     volume: 0,
@@ -120,8 +122,9 @@ export async function startIndexing() {
       pairKey: pairKey.toBase58(),
       creator: creator.toBase58(),
       attentionToken: additionalDetails.attentionToken!,
-      basePrice: basePrice.toString(),
       createdAt: new Date().toISOString(),
+      supply: additionalDetails.supply!,
+      liquidity: additionalDetails.liquidity!,
       ...additionalDetails,
     };
     // Read existing data
@@ -136,6 +139,56 @@ export async function startIndexing() {
     console.log('Pair details:', newPair);
   });
 
+  program.addEventListener('swapExecuted', async (event, slot) => {
+    const { isBuy, amountIn, amountOut, user, pairKey, attentionTokenMint } = event;
+    
+    // Read existing data
+    const pairs = await readPairsData();
+    
+    // Find the pair in our data
+    const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
+    
+    if (pairIndex !== -1) {
+      // Ensure all numeric values are numbers, not strings
+      const pair = pairs[pairIndex];
+      pair.supply = Number(pair.supply || 0);
+      pair.liquidity = Number(pair.liquidity || 0);
+      pair.volume = Number(pair.volume || 0);
+      pair.buys = Number(pair.buys || 0);
+      pair.sells = Number(pair.sells || 0);
+      
+      // Update stats
+      if (isBuy) {
+        pair.buys++;
+        pair.supply += Number(amountOut);
+        pair.liquidity += Number(amountIn);
+        pair.volume += Number(amountIn);
+      } else {
+        pair.sells++;
+        pair.supply -= Number(amountIn);
+        pair.liquidity -= Number(amountOut);
+        pair.volume += Number(amountOut);
+      }
+      
+      // Calculate price and market cap
+      pair.price = getPrice(pair.supply);
+      pair.marketCap = pair.price * pair.supply / lamports;
+      
+      // Write updated data back to file
+      await writePairsData(pairs);
+      console.log(`Indexed swap for pair: ${pairKey.toBase58()}`);
+      console.log('Swap details:', {
+        isBuy,
+        amountIn: amountIn.toString(),
+        amountOut: amountOut.toString(),
+        user: user.toBase58(),
+        attentionTokenMint: attentionTokenMint.toBase58()
+      });
+    }
+  });
+
   console.log('Indexer started');
+
+
 }
 

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/flake.json`.
  */
 export type Flake = {
-  "address": "4JnYf1yL3TeroAg3Xtj9pVA4vJqtWckZcTDc6Ajfbm9j",
+  "address": "8rT4b7dXQJxXpumCq45UCekRTwXiRBjJG5kVXnqvd4bd",
   "metadata": {
     "name": "flake",
     "version": "0.1.0",
@@ -13,6 +13,40 @@ export type Flake = {
     "description": "Created with Anchor"
   },
   "instructions": [
+    {
+      "name": "acceptRequest",
+      "discriminator": [
+        4,
+        60,
+        28,
+        227,
+        25,
+        199,
+        246,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "pair",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "requestIndex",
+          "type": "u8"
+        }
+      ]
+    },
     {
       "name": "createPair",
       "discriminator": [
@@ -158,6 +192,60 @@ export type Flake = {
       ]
     },
     {
+      "name": "submitRequest",
+      "discriminator": [
+        122,
+        30,
+        180,
+        251,
+        206,
+        230,
+        254,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "pair",
+          "writable": true
+        },
+        {
+          "name": "attentionTokenMint",
+          "writable": true
+        },
+        {
+          "name": "userTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "creatorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "requestIndex",
+          "type": "u8"
+        },
+        {
+          "name": "adText",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "swap",
       "discriminator": [
         248,
@@ -283,6 +371,45 @@ export type Flake = {
         56,
         30
       ]
+    },
+    {
+      "name": "requestAccepted",
+      "discriminator": [
+        49,
+        16,
+        162,
+        180,
+        83,
+        220,
+        40,
+        133
+      ]
+    },
+    {
+      "name": "requestSubmitted",
+      "discriminator": [
+        113,
+        213,
+        202,
+        246,
+        213,
+        106,
+        73,
+        44
+      ]
+    },
+    {
+      "name": "swapExecuted",
+      "discriminator": [
+        150,
+        166,
+        26,
+        225,
+        28,
+        89,
+        38,
+        79
+      ]
     }
   ],
   "errors": [
@@ -310,6 +437,36 @@ export type Flake = {
       "code": 6004,
       "name": "slippageExceeded",
       "msg": "Slippage tolerance exceeded"
+    },
+    {
+      "code": 6005,
+      "name": "invalidRequestIndex",
+      "msg": "Invalid request index"
+    },
+    {
+      "code": 6006,
+      "name": "adTextTooLong",
+      "msg": "Ad text too long"
+    },
+    {
+      "code": 6007,
+      "name": "insufficientTokens",
+      "msg": "Insufficient tokens"
+    },
+    {
+      "code": 6008,
+      "name": "unauthorizedCaller",
+      "msg": "Unauthorized caller"
+    },
+    {
+      "code": 6009,
+      "name": "requestNotFound",
+      "msg": "Request not found or not in pending status"
+    },
+    {
+      "code": 6010,
+      "name": "requestAlreadyProcessed",
+      "msg": "Request has already been processed"
     }
   ],
   "types": [
@@ -465,6 +622,32 @@ export type Flake = {
                 }
               }
             }
+          },
+          {
+            "name": "pendingRequests",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "request"
+                }
+              }
+            }
+          },
+          {
+            "name": "s0",
+            "type": "u64"
+          },
+          {
+            "name": "pmin",
+            "type": "u64"
+          },
+          {
+            "name": "pmax",
+            "type": "u64"
+          },
+          {
+            "name": "smax",
+            "type": "u64"
           }
         ]
       }
@@ -494,6 +677,62 @@ export type Flake = {
       }
     },
     {
+      "name": "request",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "requestIndex",
+            "type": "u8"
+          },
+          {
+            "name": "adText",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "requestStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "requestAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "requestIndex",
+            "type": "u8"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "requestConfig",
       "type": {
         "kind": "struct",
@@ -505,6 +744,86 @@ export type Flake = {
           {
             "name": "description",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "requestStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "pending"
+          },
+          {
+            "name": "accepted"
+          },
+          {
+            "name": "rejected"
+          },
+          {
+            "name": "refunded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "requestSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pairKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "requestIndex",
+            "type": "u8"
+          },
+          {
+            "name": "adText",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "swapExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "isBuy",
+            "type": "bool"
+          },
+          {
+            "name": "amountIn",
+            "type": "u64"
+          },
+          {
+            "name": "amountOut",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "pairKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "attentionTokenMint",
+            "type": "pubkey"
           }
         ]
       }
