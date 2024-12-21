@@ -67,6 +67,8 @@ interface SwapInfo {
   amountOut: number;
   createdAt: string;
   averagePrice: number;
+  startPrice: number;
+  endPrice: number;
 }
 
 async function loadWallet(): Promise<Wallet> {
@@ -197,10 +199,12 @@ export async function startIndexing() {
     const swaps = await readSwapsData();
     // Find the pair in our data
     const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
+    let startPrice = 0;
     
     if (pairIndex !== -1) {
       // Ensure all numeric values are numbers, not strings
       const pair = pairs[pairIndex];
+      startPrice = getPrice(pair.supply || 0);
       pair.supply = Number(pair.supply || 0);
       pair.liquidity = Number(pair.liquidity || 0);
       pair.volume = Number(pair.volume || 0);
@@ -246,6 +250,8 @@ export async function startIndexing() {
       amountOut: Number(amountOut),
       createdAt: new Date().toISOString(),
       averagePrice: isBuy ? Number(amountIn) / Number(amountOut) : Number(amountOut) / Number(amountIn),
+      startPrice: startPrice,
+      endPrice: getPrice(pairs[pairIndex].supply || 0),
     };
 
     // Add new swap to the beginning of the array
@@ -283,21 +289,21 @@ export async function startIndexing() {
     console.log('Request details:', newRequest);
     
     // Post to webhook
-    try {
-      const response = await fetch('http://localhost:3005/webhook/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newRequest),
-      });
+    // try {
+    //   const response = await fetch('http://localhost:3005/webhook/requests', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify(newRequest),
+    //   });
 
-      if (!response.ok) {
-        console.error('Failed to post to webhook:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error posting to webhook:', error);
-    }
+    //   if (!response.ok) {
+    //     console.error('Failed to post to webhook:', response.statusText);
+    //   }
+    // } catch (error) {
+    //   console.error('Error posting to webhook:', error);
+    // }
   });
 
   program.addEventListener('requestAccepted', async (event, slot) => {
