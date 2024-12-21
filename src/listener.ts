@@ -53,6 +53,8 @@ interface RequestInfo {
   requestIndex: number;
   adText: string;
   createdAt: string;
+  status: string;
+  updatedAt: string;
 }
 
 interface SwapInfo {
@@ -269,8 +271,17 @@ export async function startIndexing() {
       requestIndex: requestIndex,
       adText: adText,
       createdAt: new Date().toISOString(),
+      status: "Pending",
+      updatedAt: new Date().toISOString(),
     };
 
+    // Continue with existing logic
+    const requests = await readRequestsData();
+    requests.unshift(newRequest);
+    await writeRequestsData(requests);
+    console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
+    console.log('Request details:', newRequest);
+    
     // Post to webhook
     try {
       const response = await fetch('http://localhost:3005/webhook/requests', {
@@ -287,13 +298,32 @@ export async function startIndexing() {
     } catch (error) {
       console.error('Error posting to webhook:', error);
     }
+  });
 
-    // Continue with existing logic
+  program.addEventListener('requestAccepted', async (event, slot) => {
+    const { creator, requestIndex, user, timestamp } = event;
+    
+    // Read existing requests data
     const requests = await readRequestsData();
-    requests.unshift(newRequest);
-    await writeRequestsData(requests);
-    console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
-    console.log('Request details:', newRequest);
+    
+    // Find the request that matches both the user and request_index
+    // TODO: We will use a uuid on smart contract in future
+    const request = requests.findIndex(r => 
+      r.user === user.toBase58() && 
+      r.requestIndex === requestIndex
+    );
+
+    if (request !== -1) {
+      // Update the request status and timestamp
+      requests[request].status = "Accepted";
+      requests[request].updatedAt = new Date().toISOString();
+
+      // Write updated data back to file
+      await writeRequestsData(requests);
+      console.log(`Updated request status to Accepted: User ${user.toBase58()}, Index ${requestIndex}`);
+    } else {
+      console.log(`Request not found: User ${user.toBase58()}, Index ${requestIndex}`);
+    }
   });
 
   console.log('Indexer started');
