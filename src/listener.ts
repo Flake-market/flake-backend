@@ -49,6 +49,7 @@ interface PairInfo {
 interface RequestInfo {
   pairKey: string;
   user: string;
+  creator: string;
   requestIndex: number;
   adText: string;
   createdAt: string;
@@ -257,21 +258,39 @@ export async function startIndexing() {
   program.addEventListener('requestSubmitted', async (event, slot) => {
     const { pairKey, user, requestIndex, adText } = event;
     
+    // Read existing pairs data to find the creator
+    const pairs = await readPairsData();
+    const pair = pairs.find(p => p.pairKey === pairKey.toBase58());
+    
     const newRequest: RequestInfo = {
       pairKey: pairKey.toBase58(),
       user: user.toBase58(),
+      creator: pair?.creator || "", 
       requestIndex: requestIndex,
       adText: adText,
       createdAt: new Date().toISOString(),
     };
 
-    // Read existing requests
+    // Post to webhook
+    try {
+      const response = await fetch('http://localhost:3005/webhook/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newRequest),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to post to webhook:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error posting to webhook:', error);
+    }
+
+    // Continue with existing logic
     const requests = await readRequestsData();
-
-    // Add new request to the beginning of the array
     requests.unshift(newRequest);
-
-    // Write updated data back to file
     await writeRequestsData(requests);
     console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
     console.log('Request details:', newRequest);
