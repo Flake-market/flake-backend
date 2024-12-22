@@ -49,9 +49,12 @@ interface PairInfo {
 interface RequestInfo {
   pairKey: string;
   user: string;
+  creator: string;
   requestIndex: number;
   adText: string;
   createdAt: string;
+  status: string;
+  updatedAt: string;
 }
 
 interface SwapInfo {
@@ -64,6 +67,8 @@ interface SwapInfo {
   amountOut: number;
   createdAt: string;
   averagePrice: number;
+  startPrice: number;
+  endPrice: number;
 }
 
 async function loadWallet(): Promise<Wallet> {
@@ -194,10 +199,12 @@ export async function startIndexing() {
     const swaps = await readSwapsData();
     // Find the pair in our data
     const pairIndex = pairs.findIndex(p => p.pairKey === pairKey.toBase58());
+    let startPrice = 0;
     
     if (pairIndex !== -1) {
       // Ensure all numeric values are numbers, not strings
       const pair = pairs[pairIndex];
+      startPrice = getPrice(pair.supply || 0);
       pair.supply = Number(pair.supply || 0);
       pair.liquidity = Number(pair.liquidity || 0);
       pair.volume = Number(pair.volume || 0);
@@ -243,6 +250,8 @@ export async function startIndexing() {
       amountOut: Number(amountOut),
       createdAt: new Date().toISOString(),
       averagePrice: isBuy ? Number(amountIn) / Number(amountOut) : Number(amountOut) / Number(amountIn),
+      startPrice: startPrice,
+      endPrice: getPrice(pairs[pairIndex].supply || 0),
     };
 
     // Add new swap to the beginning of the array
@@ -257,24 +266,70 @@ export async function startIndexing() {
   program.addEventListener('requestSubmitted', async (event, slot) => {
     const { pairKey, user, requestIndex, adText } = event;
     
+    // Read existing pairs data to find the creator
+    const pairs = await readPairsData();
+    const pair = pairs.find(p => p.pairKey === pairKey.toBase58());
+    
     const newRequest: RequestInfo = {
       pairKey: pairKey.toBase58(),
       user: user.toBase58(),
+      creator: pair?.creator || "", 
       requestIndex: requestIndex,
       adText: adText,
       createdAt: new Date().toISOString(),
+      status: "Pending",
+      updatedAt: new Date().toISOString(),
     };
 
-    // Read existing requests
+    // Continue with existing logic
     const requests = await readRequestsData();
-
-    // Add new request to the beginning of the array
     requests.unshift(newRequest);
-
-    // Write updated data back to file
     await writeRequestsData(requests);
     console.log(`Indexed new request for pair: ${pairKey.toBase58()}`);
     console.log('Request details:', newRequest);
+    
+    // Post to webhook
+    // try {
+    //   const response = await fetch('http://localhost:3005/webhook/requests', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify(newRequest),
+    //   });
+
+    //   if (!response.ok) {
+    //     console.error('Failed to post to webhook:', response.statusText);
+    //   }
+    // } catch (error) {
+    //   console.error('Error posting to webhook:', error);
+    // }
+  });
+
+  program.addEventListener('requestAccepted', async (event, slot) => {
+    const { creator, requestIndex, user, timestamp } = event;
+    
+    // Read existing requests data
+    const requests = await readRequestsData();
+    
+    // Find the request that matches both the user and request_index
+    // TODO: We will use a uuid on smart contract in future
+    const request = requests.findIndex(r => 
+      r.user === user.toBase58() && 
+      r.requestIndex === requestIndex
+    );
+
+    if (request !== -1) {
+      // Update the request status and timestamp
+      requests[request].status = "Accepted";
+      requests[request].updatedAt = new Date().toISOString();
+
+      // Write updated data back to file
+      await writeRequestsData(requests);
+      console.log(`Updated request status to Accepted: User ${user.toBase58()}, Index ${requestIndex}`);
+    } else {
+      console.log(`Request not found: User ${user.toBase58()}, Index ${requestIndex}`);
+    }
   });
 
   console.log('Indexer started');
